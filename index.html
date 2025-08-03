@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Trend Dashboard</title>
+    <!-- Google Fonts for a nice sans-serif like Roboto -->
+    <link href="https://fonts.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS for utility classes and responsive design (loaded via CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Chart.js for creating the financial line chart -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- html2pdf.js for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        /* Define CSS Variables for Burger King, McDonald's, TGIF, and Netflix Palettes */
+        :root {
+            /* Burger King Palette Colors */
+            --bk-red: #D40026;
+            --bk-gold: #F2A900;
+            --bk-blue: #003366;
+            --bk-white: #FFFFFF;
+
+            /* McDonald's Palette Colors (subtly integrated) */
+            --mc-red: #BF0A30;
+            --mc-yellow: #FFC72C;
+
+            /* TGIF Palette Colors (subtly integrated) */
+            --tgif-red: #D2232A;
+            --tgif-blue: #0070C0;
+
+            /* Netflix Mode Colors (keeping for dark theme base) */
+            --netflix-dark: #141414;
+            --netflix-medium: #222222;
+            --netflix-light-text: #E5E5E5;
+
+            /* Feedback colors */
+            --feedback-correct: #4CAF50;
+            --feedback-incorrect: #FF9800;
+        }
+
+        /* General Body Styling - Netflix Mode */
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--netflix-dark);
+            color: var(--netflix-light-text);
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Header/Navbar Styling */
+        .navbar {
+            background-color: var(--netflix-medium);
+            padding: 15px 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        /* Logo Styling */
+        .logo {
+            color: var(--bk-red);
+            font-size: 2.2em;
+            font-weight: 700;
+            margin: 0;
+            animation: pulse 2s infinite alternate;
+        }
+
+        /* Keyframes for the pulse animation */
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.02);
+                opacity: 0.95;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* PDF Export Button Styling */
+        .pdf-button {
+            background-color: var(--bk-gold);
+            color: var(--netflix-dark);
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .pdf-button:hover {
+            background-color: var(--mc-yellow);
+            transform: translateY(-2px);
+        }
+
+        /* Main Content Container - Simulates Netflix Content Grid/Flow */
+        .content-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px 5%;
+            gap: 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Individual Content Card Styling */
+        .content-card {
+            background-color: var(--netflix-medium);
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+            width: 100%;
+            max-width: 800px;
+            box-sizing: border-box;
+            transition: transform 0.4s ease, box-shadow 0.4s ease, opacity 0.6s ease;
+            opacity: 0;
+            transform: translateY(30px) scale(0.98);
+        }
+
+        /* Animation class for "impact to click in sequence" */
+        .content-card.fade-in {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        .content-card:hover {
+            transform: translateY(-8px) scale(1.01);
+            box-shadow: 8px 10px 25px rgba(0, 0, 0, 0.8);
+        }
+
+        .content-card h4, .content-card h5 {
+            color: var(--bk-gold);
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .content-card h5 {
+            font-size: 1.25em;
+        }
+
+        .content-card ul {
+            list-style: disc;
+            padding-left: 20px;
+            margin-top: 1rem;
+        }
+
+        .content-card li {
+            margin-bottom: 0.5rem;
+        }
+
+        /* Section Title Styling - Burger King Golden Orange */
+        .section-title {
+            color: var(--bk-gold);
+            font-size: 2.5em;
+            margin-bottom: 25px;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        /* Content Text Styling */
+        .content-text {
+            font-size: 1.15em;
+            margin-top: 20px;
+            color: var(--netflix-light-text);
+            line-height: 1.8;
+        }
+
+        /* Language Buttons Container */
+        .lang-buttons {
+            text-align: center;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        /* Individual Language Button Styling */
+        .lang-buttons button {
+            background-color: var(--bk-red);
+            color: var(--bk-white);
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .lang-buttons button:hover {
+            background-color: var(--tgif-red);
+            transform: translateY(-1px);
+        }
+
+        /* Active Language Button Styling */
+        .lang-buttons button.active {
+            background-color: var(--bk-gold);
+            color: var(--netflix-dark);
+            box-shadow: 4px 0 10px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Highlight for expressions */
+        .highlight-expression {
+            background-color: var(--bk-gold);
+            color: var(--netflix-dark);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        /* Highlight for different meanings */
+        .highlight-red {
+            background-color: var(--bk-red);
+            color: var(--bk-white);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .highlight-blue {
+            background-color: var(--bk-blue);
+            color: var(--bk-white);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .highlight-gold {
+            background-color: var(--bk-gold);
+            color: var(--netflix-dark);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .highlight-green {
+            background-color: #B2FF59;
+            color: var(--netflix-dark);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .category-heading {
+            color: var(--bk-gold);
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid rgba(242, 169, 0, 0.2);
+            padding-bottom: 0.5rem;
+        }
+
+        .sub-list {
+            list-style: none;
+            padding-left: 1.5rem;
+        }
+
+        .sub-list li::before {
+            content: '•';
+            color: var(--bk-red);
+            font-weight: bold;
+            display: inline-block;
+            width: 1em;
+            margin-left: -1em;
+        }
+
+        /* New styling for the example box */
+        .example-box {
+            background-color: var(--netflix-dark);
+            border: 2px dashed var(--bk-gold);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        /* New animated box styling */
+        .animated-box {
+            animation: slideInRight 1s ease-out;
+            animation-fill-mode: forwards;
+            opacity: 0;
+        }
+
+        /* Keyframes for the slide-in animation */
+        @keyframes slideInRight {
+            0% {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            100% {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Chart-specific styles to ensure it looks good in the new card layout */
+        .chart-container {
+            position: relative;
+            height: 350px;
+            width: 100%;
+        }
+
+        .vocabulary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .vocabulary-item {
+            background-color: rgba(34, 34, 34, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid var(--bk-gold);
+            transition: transform 0.2s ease, background-color 0.2s ease;
+        }
+
+        .vocabulary-item:hover {
+            transform: scale(1.02);
+            background-color: rgba(44, 44, 44, 0.9);
+        }
+
+        .vocabulary-item h5 {
+            margin: 0 0 10px 0;
+            color: var(--bk-gold);
+            font-size: 1.1em;
+        }
+
+        .vocabulary-item li {
+            font-size: 0.9em;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+        }
+
+        .vocabulary-item li::before {
+            content: '•';
+            color: var(--bk-red);
+            font-weight: bold;
+            display: inline-block;
+            width: 1em;
+            margin-left: -1em;
+        }
+
+        /* New Quiz Section Styles */
+        .quiz-card-header {
+            color: var(--bk-gold);
+            font-size: 1.5em;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .quiz-question {
+            font-size: 1.2em;
+            text-align: center;
+            min-height: 60px;
+            margin-bottom: 20px;
+        }
+
+        .quiz-options {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .quiz-button {
+            background-color: var(--netflix-medium);
+            color: var(--netflix-light-text);
+            border: 2px solid var(--netflix-light-text);
+            border-radius: 6px;
+            padding: 10px 15px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        .quiz-button:hover {
+            background-color: var(--bk-blue);
+            border-color: var(--bk-blue);
+        }
+
+        .quiz-button.correct {
+            background-color: var(--feedback-correct);
+            border-color: var(--feedback-correct);
+            color: white;
+        }
+
+        .quiz-button.incorrect {
+            background-color: var(--feedback-incorrect);
+            border-color: var(--feedback-incorrect);
+            color: white;
+        }
+
+        .quiz-feedback {
+            min-height: 30px;
+            margin-top: 20px;
+            text-align: center;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: var(--netflix-light-text);
+        }
+
+        .quiz-next-button {
+            background-color: var(--bk-gold);
+            color: var(--netflix-dark);
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        .quiz-next-button:hover {
+            background-color: var(--mc-yellow);
+            transform: translateY(-2px);
+        }
+
+        .trend-chart-details {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        @media (min-width: 768px) {
+            .trend-chart-details {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        /* Styling for the Portuguese translations */
+        .pt-translation {
+            color: var(--bk-red);
+            font-weight: normal;
+            font-style: italic;
+            margin-left: 5px;
+        }
+        .hidden-pt {
+            display: none;
+        }
+    
+        /* Table styling for the recap section */
+        .recap-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .recap-table th, .recap-table td {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 12px;
+            text-align: left;
+        }
+        
+        .recap-table th {
+            background-color: var(--bk-gold);
+            color: var(--netflix-dark);
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .recap-table td {
+            color: var(--netflix-light-text);
+            font-size: 1em;
+        }
+
+        .recap-table tr:nth-child(even) {
+            background-color: rgba(34, 34, 34, 0.5);
+        }
+        
+        .recap-table tr:hover {
+            background-color: rgba(44, 44, 44, 0.8);
+        }
+        
+        .recap-table .usage-text {
+            font-size: 0.9em;
+            color: rgba(229, 229, 229, 0.7);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header / Navbar -->
+    <header class="navbar" id="navbar">
+        <div class="flex items-center gap-4">
+            <a href="#" class="logo">Financial Dashboard</a>
+            <div class="lang-buttons">
+                <button id="lang-en" class="active">English</button>
+                <button id="lang-pt">Português</button>
+            </div>
+        </div>
+        <button id="pdf-export-button" class="pdf-button"><i class="fas fa-file-pdf"></i> Export to PDF</button>
+    </header>
+
+    <!-- Main Content -->
+    <main class="content-container">
+
+        <!-- Welcome Card -->
+        <div class="content-card fade-in" id="welcome-card">
+            <h1 class="section-title">
+                <i class="fas fa-chart-line"></i>
+                Financial Trend Analysis <span class="pt-translation hidden-pt">(Análise de Tendências Financeiras)</span>
+            </h1>
+            <p class="content-text">
+                Welcome to your financial trend dashboard. This platform provides a visual representation of key financial metrics, helping you track performance and identify patterns over time.
+                <span class="pt-translation hidden-pt">Bem-vindo(a) ao seu dashboard de tendências financeiras. Esta plataforma oferece uma representação visual de métricas financeiras essenciais, ajudando você a acompanhar o desempenho e identificar padrões ao longo do tempo.</span>
+            </p>
+        </div>
+
+        <!-- Financial Chart Card -->
+        <div class="content-card fade-in" id="chart-card">
+            <h2 class="text-2xl font-bold mb-4 text-center text-white">Revenue Growth Trend <span class="pt-translation hidden-pt">(Tendência de Crescimento da Receita)</span></h2>
+            <div class="relative w-full overflow-hidden rounded-lg border border-gray-500">
+                <div class="chart-container">
+                    <canvas id="financialChart"></canvas>
+                </div>
+            </div>
+            <div id="chart-description-box" class="chart-description">
+                <p>Hover over the data points on the graph to see a Bloomberg-style trend analysis.</p>
+            </div>
+        </div>
+
+        <!-- Trend Vocabulary Card -->
+        <div class="content-card fade-in" id="trend-graph-card">
+            <h2 class="section-title">
+                <i class="fas fa-chart-area"></i>
+                Vocabulary on a Trend Graph <span class="pt-translation hidden-pt">(Vocabulário em um Gráfico de Tendências)</span>
+            </h2>
+            <p class="content-text text-center">
+                This visual breaks down a typical uptrend into phases, with the ideal vocabulary for describing each. <span class="pt-translation hidden-pt">Este visual divide uma tendência de alta típica em fases, com o vocabulário ideal para descrever cada uma delas.</span>
+            </p>
+            <div class="relative w-full overflow-hidden rounded-lg border border-gray-500 mt-8">
+                <div class="chart-container">
+                    <canvas id="trendVocabularyChart"></canvas>
+                </div>
+            </div>
+            <div class="trend-chart-details">
+                <div class="vocabulary-item mt-4">
+                    <h5>Initial Slow Increase <span class="pt-translation hidden-pt">(Aumento lento inicial)</span></h5>
+                    <p class="text-sm text-gray-400"><strong>Vocabulary:</strong> Tick up <span class="pt-translation hidden-pt">(Dar uma subidinha)</span>, Edge higher, Creep up</p>
+                    <p class="text-sm"><strong>Example:</strong> "Prices started to <span class="highlight-gold">tick up</span> after the earnings report."</p>
+                </div>
+                <div class="vocabulary-item mt-4">
+                    <h5>Gradual, Steady Growth <span class="pt-translation hidden-pt">(Crescimento gradual e constante)</span></h5>
+                    <p class="text-sm text-gray-400"><strong>Vocabulary:</strong> Climb <span class="pt-translation hidden-pt">(Subir)</span>, Rise <span class="pt-translation hidden-pt">(Aumentar)</span>, Advance</p>
+                    <p class="text-sm"><strong>Example:</strong> "The stock price <span class="highlight-gold">advanced</span> gradually throughout the quarter."</p>
+                </div>
+                <div class="vocabulary-item mt-4">
+                    <h5>Sharp Increase <span class="pt-translation hidden-pt">(Aumento acentuado)</span></h5>
+                    <p class="text-sm text-gray-400"><strong>Vocabulary:</strong> Surge <span class="pt-translation hidden-pt">(Disparar)</span>, Spike, Jump</p>
+                    <p class="text-sm"><strong>Example:</strong> "The stock <span class="highlight-gold">surged</span> mid-quarter after a positive guidance."</p>
+                </div>
+                <div class="vocabulary-item mt-4">
+                    <h5>Temporary Pause <span class="pt-translation hidden-pt">(Pausa temporária)</span></h5>
+                    <p class="text-sm text-gray-400"><strong>Vocabulary:</strong> Consolidate <span class="pt-translation hidden-pt">(Consolidar)</span>, Trade sideways</p>
+                    <p class="text-sm"><strong>Example:</strong> "After the rally, the price <span class="highlight-gold">consolidated</span>, forming a flag pattern."</p>
+                </div>
+                <div class="vocabulary-item mt-4">
+                    <h5>Rapid Increase <span class="pt-translation hidden-pt">(Aumento rápido)</span></h5>
+                    <p class="text-sm text-gray-400"><strong>Vocabulary:</strong> Skyrocket <span class="pt-translation hidden-pt">(Subir vertiginosamente)</span>, Explode, Soar</p>
+                    <p class="text-sm"><strong>Example:</strong> "Prices <span class="highlight-gold">skyrocketed</span> to a new high on the merger news."</p>
+                </div>
+                <div class="vocabulary-item mt-4">
+                    <h5>Small Correction <span class="pt-translation hidden-pt">(Pequena correção)</span></h5>
+                    <p class="text-sm text-gray-400"><strong>Vocabulary:</strong> Rebound <span class="pt-translation hidden-pt">(Repique)</span>, Bounce back</p>
+                    <p class="text-sm"><strong>Example:</strong> "The stock quickly <span class="highlight-gold">rebounded</span> after a brief dip."</p>
+                </div>
+                <div class="vocabulary-item mt-4">
+                    <h5>Sustained Growth <span class="pt-translation hidden-pt">(Crescimento sustentado)</span></h5>
+                    <p class="text-sm text-gray-400"><strong>Vocabulary:</strong> Continue <span class="pt-translation hidden-pt">(Continuar)</span>, March on</p>
+                    <p class="text-sm"><strong>Example:</strong> "The uptrend momentum <span class="highlight-gold">marched on</span>, with the stock <span class="highlight-gold">continuing</span> to gain."</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bloomberg Vocabulary Guide Card -->
+        <div class="content-card fade-in" id="vocabulary-card">
+            <h2 class="section-title">
+                <i class="fas fa-money-bill-trend-up"></i>
+                Advanced Financial Vocabulary <span class="pt-translation hidden-pt">(Vocabulário Financeiro Avançado)</span>
+            </h2>
+            <p class="content-text text-center">
+                This comprehensive guide offers synonyms for "to increase" and "to grow", categorized by context, so you have powerful vocabulary for business and finance.
+                <span class="pt-translation hidden-pt">Este guia completo oferece sinônimos para "aumentar" e "crescer", organizados por contexto, para que você tenha um vocabulário poderoso para negócios e finanças.</span>
+            </p>
+
+            <div class="mt-8">
+                <!-- Section 1: Prices of Products and Commodities -->
+                <h3 class="category-heading">1. Prices of Products and Commodities <span class="pt-translation hidden-pt">(Preços de Produtos e Commodities)</span> 📈</h3>
+                <p class="content-text text-sm">Vocabulary to describe the movement of prices, reflecting the speed and magnitude of the change. <span class="pt-translation hidden-pt">Vocabulário para descrever a movimentação de preços, refletindo a velocidade e a magnitude da mudança.</span></p>
+                <ul class="sub-list">
+                    <li>[rising] <span class="pt-translation hidden-pt">(subindo)</span> **Usage:** When prices are increasing steadily over a period. <span class="pt-translation hidden-pt">(**Uso:** Quando os preços estão aumentando constantemente ao longo do tempo.)</span><br/>"Oil prices are <span class="highlight-gold">rising</span> amid supply concerns."</li>
+                    <li>[raising] <span class="pt-translation hidden-pt">(aumentando)</span> **Usage:** When a company intentionally increases its own prices or costs. <span class="pt-translation hidden-pt">(**Uso:** Quando uma empresa aumenta intencionalmente seus próprios preços ou custos.)</span><br/>"The company is <span class="highlight-gold">raising</span> its prices to cover costs."</li>
+                    <li>[marking up] <span class="pt-translation hidden-pt">(remarcando para cima)</span> **Usage:** Retailers add a percentage to their cost to set prices. <span class="pt-translation hidden-pt">(**Uso:** Varejistas adicionam uma porcentagem ao custo para definir preços.)</span><br/>"The retailer is <span class="highlight-gold">marking up</span> products by 20% to increase profits."</li>
+                    <li>[escalated] <span class="pt-translation hidden-pt">(escalou)</span> **Usage:** Describes a rapid and often unwelcome or significant price increase. <span class="pt-translation hidden-pt">(**Uso:** Descreve um aumento rápido e muitas vezes indesejável ou significativo.)</span><br/>"Raw material costs have <span class="highlight-gold">escalated</span> over the past year."</li>
+                    <li>[surged] <span class="pt-translation hidden-pt">(disparou)</span> **Usage:** Used for a sudden, large jump in price or volume. <span class="pt-translation hidden-pt">(**Uso:** Usado para um salto repentino e grande no preço ou volume.)</span><br/>"Gas prices <span class="highlight-gold">surged</span> overnight due to supply chain disruptions."</li>
+                    <li>[explode] <span class="pt-translation hidden-pt">(explodir)</span> **Usage:** A very dramatic, fast, and significant price increase. <span class="pt-translation hidden-pt">(**Uso:** Um aumento de preço muito dramático, rápido e significativo.)</span><br/>"New tariffs caused the price of steel to <span class="highlight-gold">explode</span>."</li>
+                    <li>[uptick] <span class="pt-translation hidden-pt">(pequena alta)</span> **Usage:** A small, often temporary, but positive increase in a metric. <span class="pt-translation hidden-pt">(**Uso:** Um aumento pequeno, muitas vezes temporário, mas positivo.)</span><br/>"The government announced a tax <span class="highlight-gold">uptick</span>, pushing prices higher."</li>
+                    <li>[appreciated] <span class="pt-translation hidden-pt">(valorizou)</span> **Usage:** The value of a currency or asset has increased against another. <span class="pt-translation hidden-pt">(**Uso:** O valor de uma moeda ou ativo aumentou em relação a outro.)</span><br/>"The currency has <span class="highlight-gold">appreciated</span> against the dollar."</li>
+                    <li>[steep increase] <span class="pt-translation hidden-pt">(aumento acentuado)</span> **Usage:** A sharp and significant upward movement on a chart. <span class="pt-translation hidden-pt">(**Uso:** Um movimento ascendente acentuado e significativo em um gráfico.)</span><br/>"The company saw a <span class="highlight-gold">steep increase</span> in operating costs."</li>
+                    <li>[uptick] <span class="pt-translation hidden-pt">(pequena alta)</span> **Usage:** A small, often temporary, but positive increase in a metric. <span class="pt-translation hidden-pt">(**Uso:** Um aumento pequeno, muitas vezes temporário, mas positivo.)</span><br/>"We saw a slight <span class="highlight-gold">uptick</span> in commodity prices after the policy change."</li>
+                </ul>
+
+                <!-- Section 2: Stock Market and Economy -->
+                <h3 class="category-heading">2. Stock Market and Economy <span class="pt-translation hidden-pt">(Mercado de Ações e Economia)</span> 📊</h3>
+                <p class="content-text text-sm">Specific language to describe the performance of stocks, indices, and broader economic indicators. <span class="pt-translation hidden-pt">Linguagem específica para descrever o desempenho de ações, índices e indicadores econômicos mais amplos.</span></p>
+                <ul class="sub-list">
+                    <li>[rallied] <span class="pt-translation hidden-pt">(recuperou)</span> **Usage:** Prices rise quickly after a fall.<span class="pt-translation hidden-pt">(**Uso:** Preços sobem rapidamente após uma queda.)</span><br/>"Tech stocks <span class="highlight-gold">rallied</span> into the close of the session."</li>
+                    <li>[advanced] <span class="pt-translation hidden-pt">(avançou)</span> **Usage:** Prices increase steadily or move forward in value.<span class="pt-translation hidden-pt">(**Uso:** Preços aumentam de forma constante ou avançam em valor.)</span><br/>"The S&P 500 <span class="highlight-gold">advanced</span> for the third consecutive day."</li>
+                    <li>[rebounded] <span class="pt-translation hidden-pt">(repique)</span> **Usage:** Prices recover after a temporary decline.<span class="pt-translation hidden-pt">(**Uso:** Preços se recuperam após um declínio temporário.)</span><br/>"Markets <span class="highlight-gold">rebounded</span> after initial losses."</li>
+                    <li>[strengthened] <span class="pt-translation hidden-pt">(fortaleceu)</span> **Usage:** A currency or asset becomes more valuable.<span class="pt-translation hidden-pt">(**Uso:** Uma moeda ou ativo se torna mais valioso.)</span><br/>"The dollar <span class="highlight-gold">strengthened</span> on positive economic data."</li>
+                    <li>[gains] <span class="pt-translation hidden-pt">(ganhos)</span> **Usage:** A positive change or increase in value.<span class="pt-translation hidden-pt">(**Uso:** Uma mudança positiva ou aumento no valor.)</span><br/>"Tesla shares made <span class="highlight-gold">gains</span> of up to 8% after the announcement."</li>
+                    <li>[upswing] <span class="pt-translation hidden-pt">(virada para cima)</span> **Usage:** A period of increased activity or improvement.<span class="pt-translation hidden-pt">(**Uso:** Um período de maior atividade ou melhoria.)</span><br/>"Analysts predict an <span class="highlight-gold">upswing</span> in sales in the fourth quarter."</li>
+                    <li>[booming] <span class="pt-translation hidden-pt">(bombando)</span> **Usage:** A rapid and significant period of growth.<span class="pt-translation hidden-pt">(**Uso:** Um período de crescimento rápido e significativo.)</span><br/>"The housing market is <span class="highlight-gold">booming</span> in several cities."</li>
+                    <li>[all-time high] <span class="pt-translation hidden-pt">(máxima histórica)</span> **Usage:** The highest price ever reached by an asset.<span class="pt-translation hidden-pt">(**Uso:** O preço mais alto já alcançado por um ativo.)</span><br/>"The stock hit an <span class="highlight-gold">all-time high</span> after reporting a strong quarter."</li>
+                    <li>[going through the roof] <span class="pt-translation hidden-pt">(subindo vertiginosamente)</span> **Usage:** Prices are increasing very rapidly and significantly.<span class="pt-translation hidden-pt">(**Uso:** Preços estão aumentando muito rapidamente e significativamente.)</span><br/>"The company's stock is <span class="highlight-gold">going through the roof</span> since the CEO change."</li>
+                </ul>
+
+                <!-- Section 3: Companies -->
+                <h3 class="category-heading">3. Companies <span class="pt-translation hidden-pt">(Empresas)</span> 🏢</h3>
+                <p class="content-text text-sm">Words used to describe a company's internal growth, whether in size, team, or financial results. <span class="pt-translation hidden-pt">Palavras usadas para descrever o crescimento interno de uma empresa, seja em tamanho, equipe ou resultados financeiros.</span></p>
+                <ul class="sub-list">
+                    <li>[expanded] <span class="pt-translation hidden-pt">(expandiu)</span> **Usage:** To increase in size, scope, or volume. <span class="pt-translation hidden-pt">(**Uso:** Para aumentar em tamanho, escopo ou volume.)</span><br/>"The company **expanded** its team in Asia."</li>
+                    <li>[scaled up] <span class="pt-translation hidden-pt">(escalou)</span> **Usage:** To increase a company's capacity, often rapidly. <span class="pt-translation hidden-pt">(**Uso:** Para aumentar a capacidade de uma empresa, muitas vezes rapidamente.)</span><br/>"The startup is **scaling up** its production to meet demand."</li>
+                    <li>[boosted] <span class="pt-translation hidden-pt">(impulsionou)</span> **Usage:** To improve or increase something. <span class="pt-translation hidden-pt">(**Uso:** Para melhorar ou aumentar algo.)</span><br/>"The company **boosted** quarterly revenue by diversifying products."</li>
+                    <li>[generated] <span class="pt-translation hidden-pt">(gerou)</span> **Usage:** To produce or create something, especially revenue or profit. <span class="pt-translation hidden-pt">(**Uso:** Para produzir ou criar algo, especialmente receita ou lucro.)</span><br/>"The new strategy **generated** record profits."</li>
+                    <li>[outperformed] <span class="pt-translation hidden-pt">(superou)</span> **Usage:** To perform better than competitors or expectations. <span class="pt-translation hidden-pt">(**Uso:** Para ter um desempenho melhor que os concorrentes ou expectativas.)</span><br/>"The company's sales **outperformed** its rivals."</li>
+                    <li>[increased] <span class="pt-translation hidden-pt">(aumentou)</span> **Usage:** To make or become greater in size, amount, or degree. <span class="pt-translation hidden-pt">(**Uso:** Para se tornar ou fazer algo maior em tamanho, quantidade ou grau.)</span><br/>"The company **increased** its R&D capacity."</li>
+                    <li>[accelerated] <span class="pt-translation hidden-pt">(acelerou)</span> **Usage:** To begin to happen or develop more quickly. <span class="pt-translation hidden-pt">(**Uso:** Para começar a acontecer ou se desenvolver mais rapidamente.)</span><br/>"Hiring for the new project began to **accelerate** at year-end."</li>
+                    <li>[elevated] <span class="pt-translation hidden-pt">(elevou)</span> **Usage:** To raise to a more important or impressive level. <span class="pt-translation hidden-pt">(**Uso:** Para elevar a um nível mais importante ou impressionante.)</span><br/>"The brand's new strategy aims to **elevate** its market position."</li>
+                    <li>[pushed up] <span class="pt-translation hidden-pt">(empurrou para cima)</span> **Usage:** To cause something to rise, often by force or strong demand. <span class="pt-translation hidden-pt">(**Uso:** Para fazer com que algo suba, muitas vezes por força ou forte demanda.)</span><br/>"Strong consumer demand **pushed up** our sales figures for the quarter."</li>
+                    <li>[enhanced] <span class="pt-translation hidden-pt">(aprimorou)</span> **Usage:** To improve the quality, value, or extent of something. <span class="pt-translation hidden-pt">(**Uso:** Para melhorar a qualidade, o valor ou a extensão de algo.)</span><br/>"New software **enhanced** the team's overall productivity."</li>
+                    <li>[bolstered] <span class="pt-translation hidden-pt">(reforçou)</span> **Usage:** To support or strengthen. <span class="pt-translation hidden-pt">(**Uso:** Para dar suporte ou fortalecer.)</span><br/>"The new financing deal **bolstered** the company's balance sheet."</li>
+                    <li>[grew] <span class="pt-translation hidden-pt">(cresceu)</span> **Usage:** To increase in size, number, strength, or intensity. <span class="pt-translation hidden-pt">(**Uso:** Para aumentar em tamanho, número, força ou intensidade.)</span><br/>"The company's workforce **grew** by 15% in the last year."</li>
+                </ul>
+                
+                <!-- Section 4: Positive Indicators (Increase in Earnings) -->
+                <h3 class="category-heading">4. Positive Indicators (Increase in Earnings) <span class="pt-translation hidden-pt">(Indicadores Positivos (Aumento nos Ganhos))</span> ✅</h3>
+                <p class="content-text text-sm">Specific terms to describe when a company's financial results are better than expected. <span class="pt-translation hidden-pt">Termos específicos para descrever quando os resultados financeiros de uma empresa são melhores do que o esperado.</span></p>
+                <ul class="sub-list">
+                    <li>[beat the street] <span class="pt-translation hidden-pt">(superou as expectativas de Wall Street)</span> **Usage:** To exceed analyst estimates for earnings or revenue.<br/>"The company's earnings <span class="highlight-gold">beat the street</span> for the third consecutive quarter."</li>
+                    <li>[exceeded expectations] <span class="pt-translation hidden-pt">(superou as expectativas)</span> **Usage:** A general term for performing better than predicted.<br/>"Revenue figures <span class="highlight-gold">exceeded expectations</span>, leading to a jump in the stock price."</li>
+                    <li>[earnings surprise] <span class="pt-translation hidden-pt">(surpresa nos lucros)</span> **Usage:** A significant deviation (positive or negative) between the reported earnings and the consensus estimate.<br/>"The company reported a positive <span class="highlight-gold">earnings surprise</span>, causing the stock to rally."</li>
+                    <li>[strong quarter] <span class="pt-translation hidden-pt">(trimestre forte)</span> **Usage:** A period of particularly good financial results.<br/>"Management announced a <span class="highlight-gold">strong quarter</span> thanks to a successful product launch."</li>
+                    <li>[robust growth] <span class="pt-translation hidden-pt">(crescimento robusto)</span> **Usage:** A phrase for healthy, vigorous, and sustained growth.<br/>"Analysts are optimistic about the company's future after a period of <span class="highlight-gold">robust growth</span>."</li>
+                    <li>[strong top-line growth] <span class="pt-translation hidden-pt">(forte crescimento da receita bruta)</span> **Usage:** A significant increase in a company's revenue (the "top line" of the income statement).<br/>"The new marketing campaign led to <span class="highlight-gold">strong top-line growth</span> in the second quarter."</li>
+                    <li>[record-breaking results] <span class="pt-translation hidden-pt">(resultados recordes)</span> **Usage:** To achieve the best financial performance ever recorded by the company.<br/>"The tech giant reported <span class="highlight-gold">record-breaking results</span>, with profits hitting an all-time high."</li>
+                    <li>[smashed estimates] <span class="pt-translation hidden-pt">(superou as estimativas)</span> **Usage:** A more informal, but powerful term for exceeding expectations by a large margin.<br/>"The company not only beat but <span class="highlight-gold">smashed estimates</span>, impressing investors."</li>
+                    <li>[upbeat outlook] <span class="pt-translation hidden-pt">(perspectiva otimista)</span> **Usage:** A positive forecast or expectation for future performance.<br/>"The CEO provided an <span class="highlight-gold">upbeat outlook</span> for the coming year, boosting investor confidence."</li>
+                </ul>
+
+                <!-- Section 5: Chart Analysis -->
+                <h3 class="category-heading">5. Chart Analysis <span class="pt-translation hidden-pt">(Análise de Gráficos)</span> 📈</h3>
+                <p class="content-text text-sm">Key terms used to interpret visual data on financial charts. <span class="pt-translation hidden-pt">Termos-chave usados para interpretar dados visuais em gráficos financeiros.</span></p>
+                <ul class="sub-list">
+                    <li>[Support] <span class="pt-translation hidden-pt">(Suporte)</span> **Usage:** A price level that a stock or index has difficulty falling below, as buyers step in to purchase it. <br/>"The stock found **support** at the $50 mark, preventing a further decline."</li>
+                    <li>[Resistance] <span class="pt-translation hidden-pt">(Resistência)</span> **Usage:** A price level that a stock or index has difficulty rising above, as sellers step in to sell it. <br/>"The stock hit a key **resistance** level and pulled back."</li>
+                    <li>[Moving Average] <span class="pt-translation hidden-pt">(Média Móvel)</span> **Usage:** A line on a chart that smooths out price data to help identify trends. Common periods are 50-day and 200-day moving averages. <br/>"The stock's price crossed above its 50-day **moving average**, a signal of a bullish trend."</li>
+                    <li>[Breakout] <span class="pt-translation hidden-pt">(Rompimento)</span> **Usage:** When a stock's price moves above a resistance level or below a support level on high volume. <br/>"The price made a **breakout** above its previous high, signaling strong momentum."</li>
+                    <li>[Candlestick Chart] <span class="pt-translation hidden-pt">(Gráfico de Candlestick)</span> **Usage:** A chart that displays a stock's open, high, low, and closing prices for a specific period. A **green** or **white** 'candlestick' indicates the price closed higher than it opened (a gain), while a **red** or **black** one shows it closed lower (a loss).</li>
+                    <li>[Bullish Engulfing Pattern] <span class="pt-translation hidden-pt">(Padrão de Engolfo de Alta)</span> **Usage:** A two-candlestick pattern where a large green candlestick completely covers a preceding small red candlestick, signaling a potential bullish reversal.</li>
+                    <li>[Head and Shoulders Pattern] <span class="pt-translation hidden-pt">(Padrão de Ombro-Cabeça-Ombro)</span> **Usage:** A chart formation that predicts a price reversal. It's identified by three peaks, with the middle peak (the "head") being the highest, flanked by two lower peaks (the "shoulders").</li>
+                </ul>
+
+                <!-- Section 6: Market Sentiment and Conditions -->
+                <h3 class="category-heading">6. Market Sentiment and Conditions <span class="pt-translation hidden-pt">(Sentimento e Condições do Mercado)</span> 🧭</h3>
+                <p class="content-text text-sm">Words used to describe the overall mood of the market and specific, often speculative, market events. <span class="pt-translation hidden-pt">Palavras usadas para descrever o humor geral do mercado e eventos específicos, muitas vezes especulativos.</span></p>
+                <ul class="sub-list">
+                    <li>[Bearish] <span class="pt-translation hidden-pt">(Pessimista)</span> **Usage:** An investor's or market's belief that a stock or the market will fall in value. A "bear market" is a sustained period of falling prices. <br/>"Analysts are **bearish** on the stock due to weak earnings projections."</li>
+                    <li>[Dovish] <span class="pt-translation hidden-pt">(Conciliador)</span> **Usage:** A monetary policy focused on stimulating economic growth, often by lowering interest rates. It is the opposite of "hawkish." <br/>"The central bank adopted a **dovish** tone, suggesting rate cuts are on the horizon."</li>
+                    <li>[Liquidity] <span class="pt-translation hidden-pt">(Liquidez)</span> **Usage:** The ease with which an asset can be converted into cash without affecting its market price. High liquidity means an asset is easy to buy or sell. <br/>"The low trading volume indicates a lack of **liquidity** in the market."</li>
+                    <li>[Volatility] <span class="pt-translation hidden-pt">(Volatilidade)</span> **Usage:** The degree of variation of a trading price over time. High volatility means prices fluctuate dramatically. <br/>"The market experienced extreme **volatility** following the unexpected news."</li>
+                    <li>[Market Correction] <span class="pt-translation hidden-pt">(Correção de Mercado)</span> **Usage:** A decline of at least 10% in a stock, bond, or commodity price to correct an overvaluation. <br/>"After the strong rally, the market is due for a **market correction**."</li>
+                    <li>[Bullish] "A term describing an investor's or market's belief that a stock or the market will rise in value. A 'bull market' is a sustained period of rising prices."</li>
+                    <li>[Bubble (prices)] "A situation where the price of an asset, like a stock, rises rapidly and is significantly higher than its fundamental value, often driven by speculative buying rather than a change in underlying value."</li>
+                    <li>[Hawkish] "A term describing a monetary policy focused on fighting inflation, often by raising interest rates and tightening the money supply. This is generally seen as a negative for the stock market."</li>
+                </ul>
+                
+                <!-- Section 7: Banking and Personal Finance -->
+                <h3 class="category-heading">7. Banking and Personal Finance <span class="pt-translation hidden-pt">(Bancos e Finanças Pessoais)</span> 🏦</h3>
+                <p class="content-text text-sm">Key terms to understand how banks handle your money and the costs associated with it. <span class="pt-translation hidden-pt">Termos-chave para entender como os bancos lidam com seu dinheiro e os custos associados a isso.</span></p>
+                <ul class="sub-list">
+                    <li>[increment] "The fee a borrower pays for a loan or the reward a saver receives for a deposit. An <span class="highlight-gold">increment</span> in the interest rate can significantly increase the total <span class="highlight-gold">addition</span> to your debt over time."</li>
+                    <li>[Accrued Interest] "The interest that has been accumulated on a loan or investment, but has not yet been paid out or added to the principal balance."</li>
+                    <li>[Charges] "Charges from financial institutions for services provided. These are a separate type of <span class="highlight-gold">addition</span> to your account balance, but the money is leaving your account, not being deposited."</li>
+                    <li>[Increment/Addition] "**Increment** refers to a small, specific increase in a value (e.g., an <span class="highlight-gold">increment</span> to an interest rate). **Addition** is a broader term for adding an amount to a total (e.g., depositing your paycheck is an <span class="highlight-gold">addition</span> to your account)."</li>
+                </ul>
+
+            </div>
+        </div>
+
+        <!-- A Primer on Business & Economics Card -->
+        <div class="content-card fade-in" id="business-primer-card">
+            <h2 class="section-title">
+                <i class="fas fa-book-reader"></i>
+                A Primer on Business & Economics <span class="pt-translation hidden-pt">(Uma Cartilha de Negócios e Economia)</span>
+            </h2>
+            <p class="content-text text-center">
+                This guide provides a foundation for understanding key economic concepts and their real-world contexts. <span class="pt-translation hidden-pt">Este guia oferece uma base para entender conceitos econômicos essenciais e seus contextos no mundo real.</span>
+            </p>
+            <div class="mt-8">
+                <h3 class="category-heading">Context: Banking 🏦 <span class="pt-translation hidden-pt">(Contexto: Setor Bancário)</span></h3>
+                <p class="content-text text-sm">
+                    At its core, **banking** is the financial heartbeat of an economy. Banks act as intermediaries, taking deposits from people and businesses and then lending that money out to others. This process fuels economic activity. When you open a savings account, you're essentially lending money to the bank. When the bank gives a business a loan to build a new factory or offers you a mortgage to buy a house, it's putting that money to work. The **interest rate** is the price of this money—what borrowers pay and what savers earn. Central banks, like the Federal Reserve in the U.S., play a crucial role by setting key interest rates and regulating the financial system to ensure stability.
+                </p>
+
+                <h3 class="category-heading">Context: Country Economy 🌍 <span class="pt-translation hidden-pt">(Contexto: Economia do País)</span></h3>
+                <p class="content-text text-sm">
+                    A country's **economy** is the sum of all its production, consumption, and trade. The most common way to measure it is through **Gross Domestic Product (GDP)**. GDP represents the total value of all goods and services produced within a country over a specific period. A rising GDP usually indicates a healthy economy with more jobs, higher wages, and greater business investment. Governments influence the economy through **fiscal policy** (taxing and spending) and work with central banks on **monetary policy** (controlling the money supply and interest rates).
+                </p>
+
+                <h3 class="category-heading">Context: General Increasing 📈 <span class="pt-translation hidden-pt">(Contexto: Aumento Geral)</span></h3>
+                <p class="content-text text-sm">
+                    The term **"general increasing"** often refers to sustained periods of economic growth. This is characterized by:
+                </p>
+                <ul class="sub-list">
+                    <li>[Daby] A new term for "aumentar." Let's use it for fun! <span class="pt-translation hidden-pt">Um novo termo para "aumentar." Vamos usá-lo para diversão!</span><br/>"We expect the company's revenue to **<span class="highlight-gold">daby</span>** this quarter."</li>
+                    <li>[Rising GDP] More goods and services are being produced. <span class="pt-translation hidden-pt">(**PIB em alta**: Mais bens e serviços estão sendo produzidos.)</span></li>
+                    <li>[Low Unemployment] More people have jobs and are earning income. <span class="pt-translation hidden-pt">(**Baixo desemprego**: Mais pessoas têm empregos e estão ganhando renda.)</span></li>
+                    <li>[Increased Consumer Spending] People feel confident about the future and are willing to buy more. <span class="pt-translation hidden-pt">(**Aumento nos gastos do consumidor**: As pessoas se sentem confiantes sobre o futuro e estão dispostas a comprar mais.)</span></li>
+                    <li>[Higher Business Investment] Companies are expanding, innovating, and creating more jobs. <span class="pt-translation hidden-pt">(**Maior investimento empresarial**: As empresas estão expandindo, inovando e criando mais empregos.)</span></li>
+                </ul>
+                <p class="content-text text-sm">
+                    This growth is what governments and businesses strive for, as it generally leads to a higher standard of living. <span class="pt-translation hidden-pt">Esse crescimento é o que governos e empresas buscam, pois geralmente leva a um padrão de vida mais elevado.</span>
+                </p>
+
+                <h3 class="category-heading">Context: Stock Market 📊 <span class="pt-translation hidden-pt">(Contexto: Mercado de Ações)</span></h3>
+                <p class="content-text text-sm">
+                    The **stock market** is where ownership shares of publicly traded companies are bought and sold. It serves two main purposes:
+                </p>
+                <ul class="sub-list">
+                    <li>[For companies] It allows them to raise capital by selling stock, which they can then use to grow their business. <span class="pt-translation hidden-pt">(**Para empresas**: Permite que elas levantem capital vendendo ações, que podem então usar para expandir seus negócios.)</span></li>
+                    <li>[For investors] It provides an opportunity to own a piece of a company and profit if the company does well. <span class="pt-translation hidden-pt">(**Para investidores**: Oferece a oportunidade de possuir um pedaço de uma empresa e lucrar se a empresa se sair bem.)</span></li>
+                </ul>
+                <p class="content-text text-sm">
+                    The price of a stock is driven by a simple principle: **supply and demand**. When many investors want to buy a stock, the price goes up. When many want to sell, the price goes down. <span class="pt-translation hidden-pt">O preço de uma ação é impulsionado por um princípio simples: **oferta e demanda**. Quando muitos investidores querem comprar uma ação, o preço sobe. Quando muitos querem vender, o preço desce.</span>
+                </p>
+            
+                <h3 class="category-heading">Context: Chart Analysis Stock Market 📈 <span class="pt-translation hidden-pt">(Contexto: Análise de Gráficos de Ações)</span></h3>
+                <p class="content-text text-sm">
+                    Analyzing stock market charts is a key skill for investors. This process, known as **technical analysis**, involves studying historical price and volume data to predict future movements. Analysts look for patterns and trends, such as:
+                </p>
+                <ul class="sub-list">
+                    <li>[Trends] The general direction of a stock's price (upward, downward, or sideways). <span class="pt-translation hidden-pt">(**Tendências**: A direção geral do preço de uma ação (para cima, para baixo ou lateral).)</span></li>
+                    <li>[Support and Resistance Levels] Price points where a stock has historically stopped falling (support) or stopped rising (resistance). <span class="pt-translation hidden-pt">(**Níveis de Suporte e Resistência**: Pontos de preço onde uma ação historicamente parou de cair (suporte) ou parou de subir (resistência).)</span></li>
+                    <li>[Moving Averages] Lines that show the average price of a stock over a specific period (e.g., 50 days or 200 days), helping to identify trends. <span class="pt-translation hidden-pt">(**Médias Móveis**: Linhas que mostram o preço médio de uma ação em um período específico (por exemplo, 50 ou 200 dias), ajudando a identificar tendências.)</span></li>
+                </ul>
+
+                <h3 class="category-heading">Context: Prices of Products in Shops / Prices of Goods 🛒 <span class="pt-translation hidden-pt">(Contexto: Preços de Produtos nas Lojas / Preços de Bens)</span></h3>
+                <p class="content-text text-sm">
+                    This is a direct look at **inflation**. Inflation is the rate at which the general level of prices for goods and services is rising, and, subsequently, the purchasing power of currency is falling. A small amount of inflation is considered healthy for an economy, as it encourages spending. However, high inflation can be damaging because it erodes savings and makes it harder for consumers to afford basic necessities. Central banks often use interest rates to fight high inflation—raising rates makes borrowing more expensive, which slows spending and helps to cool down prices.
+                </p>
+
+                <h3 class="category-heading">Context: Tariff 📦 <span class="pt-translation hidden-pt">(Contexto: Tarifa)</span></h3>
+                <p class="content-text text-sm">
+                    A **tariff** is a tax imposed by a government on imported goods. The goal is often to protect domestic industries from foreign competition by making imported goods more expensive. This can also be a tool in international trade disputes. For example, a country might impose a tariff on a specific product from another country in response to a perceived unfair trade practice. While tariffs can protect local jobs in the short term, they can also lead to higher prices for consumers and retaliatory tariffs from other countries, potentially disrupting global trade.
+                </p>
+
+                <h3 class="category-heading">Context: Petrol Price ⛽️ <span class="pt-translation hidden-pt">(Contexto: Preço da Gasolina)</span></h3>
+                <p class="content-text text-sm">
+                    The price of petrol (gasoline) is a great example of a market influenced by a mix of **global and local factors**.
+                </p>
+                <ul class="sub-list">
+                    <li>[Global Supply and Demand] The price of crude oil, which is traded on a global market, is the biggest factor. <span class="pt-translation hidden-pt">(**Oferta e Demanda Global**: O preço do petróleo bruto, que é negociado no mercado global, é o maior fator.)</span></li>
+                    <li>[Refining Costs] The cost to refine crude oil into petrol. <span class="pt-translation hidden-pt">(**Custos de Refino**: O custo para refinar o petróleo bruto em gasolina.)</span></li>
+                    <li>[Taxes] Governments add various taxes, which can be a significant part of the final price. <span class="pt-translation hidden-pt">(**Impostos**: Os governos adicionam vários impostos, que podem ser uma parte significativa do preço final.)</span></li>
+                    <li>[Geopolitical Events] Conflicts in oil-producing regions can disrupt supply and cause prices to spike. <span class="pt-translation hidden-pt">(**Eventos Geopolíticos**: Conflitos em regiões produtoras de petróleo podem interromper o fornecimento e fazer com que os preços disparem.)</span></li>
+                </ul>
+                <p class="content-text text-sm">
+                    Because petrol is essential for transportation, its price has a ripple effect across the entire economy, affecting the cost of everything from food to shipping. <span class="pt-translation hidden-pt">Como a gasolina é essencial para o transporte, seu preço tem um efeito cascata em toda a economia, afetando o custo de tudo, desde alimentos até o transporte de mercadorias.</span>
+                </p>
+
+                <h3 class="category-heading">Context: Workforce in Companies 🧑‍💼 <span class="pt-translation hidden-pt">(Contexto: Força de Trabalho nas Empresas)</span></h3>
+                <p class="content-text text-sm">
+                    A company's **workforce** is one of its most valuable assets. The workforce can be analyzed in several ways:
+                </p>
+                <ul class="sub-list">
+                    <li>[Productivity] The output per employee. A more productive workforce can lead to higher profits. <span class="pt-translation hidden-pt">(**Produtividade**: A produção por funcionário. Uma força de trabalho mais produtiva pode levar a lucros maiores.)</span></li>
+                    <li>[Labor Market] The availability of skilled workers in a given area. A tight labor market (low unemployment) means companies may have to offer higher wages to attract talent. <span class="pt-translation hidden-pt">(**Mercado de Trabalho**: A disponibilidade de trabalhadores qualificados em uma determinada área. Um mercado de trabalho apertado (baixo desemprego) significa que as empresas podem ter que oferecer salários mais altos para atrair talentos.)</span></li>
+                    <li>[Unemployment Rate] The percentage of the workforce that is actively seeking employment but is unable to find a job. A low unemployment rate generally indicates a strong economy and a healthy job market. <span class="pt-translation hidden-pt">(**Taxa de Desemprego**: A porcentagem da força de trabalho que está procurando ativamente por emprego, mas não consegue encontrar um. Uma baixa taxa de desemprego geralmente indica uma economia forte e um mercado de trabalho saudável.)</span></li>
+                </ul>
+                <p class="content-text text-sm">
+                    Understanding these dynamics helps companies make decisions about hiring, training, and compensation. <span class="pt-translation hidden-pt">Compreender essa dinâmica ajuda as empresas a tomar decisões sobre contratação, treinamento e remuneração.</span>
+                </p>
+            </div>
+        </div>
+        
+        <!-- Vocabulary Recap Card -->
+        <div class="content-card fade-in" id="recap-card">
+            <h2 class="section-title">
+                <i class="fas fa-list-check"></i>
+                Recap: Vocabulary for 'Increasing' <span class="pt-translation hidden-pt">(Resumo: Vocabulário para 'Aumentar')</span>
+            </h2>
+            <p class="content-text text-center">
+                Here is a quick reference table of all the vocabulary related to growth and increases discussed above.
+                <span class="pt-translation hidden-pt">Aqui está uma tabela de referência rápida de todo o vocabulário relacionado a crescimento e aumentos discutidos acima.</span>
+            </p>
+            <table class="recap-table">
+                <thead>
+                    <tr>
+                        <th>Term <span class="pt-translation hidden-pt">(Termo)</span></th>
+                        <th>Usage / Context <span class="pt-translation hidden-pt">(Uso / Contexto)</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Rising <span class="pt-translation hidden-pt">(Subindo)</span></td>
+                        <td>Prices increasing steadily. <span class="pt-translation hidden-pt">(Preços aumentando de forma constante.)</span></td>
+                    </tr>
+                    <tr>
+                        <td>Raising <span class="pt-translation hidden-pt">(Aumentando)</span></td>
+                        <td>A company intentionally increases its own prices. <span class="pt-translation hidden-pt">(Uma empresa aumenta intencionalmente seus próprios preços.)</span></td>
+                    </tr>
+                    <tr>
+                        <td>Marking up <span class="pt-translation hidden-pt">(Remarcando para cima)</span></td>
+                        <td>Retailers adding a percentage to cost. <span class="pt-translation hidden-pt">(Varejistas adicionando uma porcentagem ao custo.)</span></td>
+                    </tr>
+                    <tr>
+                        <td>Escalated <span class="pt-translation hidden-pt">(Escalou)</span></td>
+                        <td>A rapid, often unwelcome, price increase. <span class="pt-translation hidden-pt">(Um aumento de preço rápido e muitas vezes indesejável.)</span></td>
+                    </tr>
+                    <tr>
+                        <td>Surged / Explode <span class="pt-translation hidden-pt">(Disparou / Explodir)</span></td>
+                        <td>Sudden, large jump in price or volume. <span class="pt-translation hidden-pt">(Salto repentino e grande no preço ou volume.)</span></td>
+                    </tr>
+                    <tr>
+                        <td>Uptick <span class="pt-translation hidden-pt">(Pequena alta)</span></td>
+                        <td>A small, often temporary, positive increase. <span class="pt-translation hidden-pt">(Um pequeno aumento positivo, muitas vezes temporário.)</span></td>
+                    </tr>
+                    <tr>
+                        <td>Appreciated / Strengthened <span class="pt-translation hidden-pt">(Valorizou / Fortaleceu)</span></td>
+                        <td>Value of a currency or asset increases. <span class="pt-translation hidden-pt">(O valor de uma moeda ou ativo aumenta.)</span></td>
+                    </tr>
+                    <tr>
+                        <td>Steep increase <span class="pt-translation hidden-pt">(Aumento acentuado)</span></td>
+                        <td>A sharp and significant upward movement. <span class="pt-translation hidden-pt">(Um movimento ascendente acentuado e significativo.)</span></td>
+                    </tr>
+                    <tr>
+                        <td>Rallied / Rebounded <span class="pt-translation hidden-pt">(Recuperou / Repique)</span></td>
+                        <td>Prices rise or recover quickly after a fall. <span class="pt-translation hidden-pt">(Preços sobem ou se recuperam rapidamente após uma queda.)</span></td>
+                    </tr>
+                    <tr>
+                        <td>Advanced <span class="pt-translation hidden-pt">(Avançou)</span></td>
+                        <td>Prices increase steadily. <span class="pt-translation hidden-pt">(Preços aumentam de forma constante.)</span></td>
+                    </tr>
+                    <tr>
+                        <td>Upswing / Booming <span class="pt-translation hidden-pt">(Virada para cima / Bombando)</span></td>
+                        <td>A period of increased activity or significant growth. <span class="pt-translation hidden-pt">(Um período de maior atividade ou crescimento significativo.)</span></td>
+                    </tr>
+                    <tr>
+                        <td>All-time high / Going through the roof <span class="pt-translation hidden-pt">(Máxima histórica / Subindo vertiginosamente)</span></td>
+                        <td>The highest price ever reached by an asset. <span class="pt-translation hidden-pt">(O preço mais alto já alcançado por um ativo.)</span></td>
+                    </tr>
+                    <tr>
+                        <td>Expanded / Scaled up <span class="pt-translation hidden-pt">(Expandiu / Escalou)</span></td>
+                        <td>Increase in a company's size or capacity. <span class="pt-translation hidden-pt">(Aumento no tamanho ou capacidade de uma empresa.)</span></td>
+                    </tr>
+                    <tr>
+                        <td>Boosted / Pushed up / Bolstered <span class="pt-translation hidden-pt">(Impulsionou / Empurrou para cima / Reforçou)</span></td>
+                        <td>To improve, support, or cause something to rise. <span class="pt-translation hidden-pt">(Para melhorar, apoiar ou fazer algo subir.)</span></td>
+                    </tr>
+                    <tr>
+                        <td>Generated <span class="pt-translation hidden-pt">(Gerou)</span></td>
+                        <td>To produce or create, especially revenue. <span class="pt-translation hidden-pt">(Para produzir ou criar, especialmente receita.)</span></td>
+                    </tr>
+                    <tr>
+                        <td>Outperformed / Exceeded expectations <span class="pt-translation hidden-pt">(Superou / Superou as expectativas)</span></td>
+                        <td>To perform better than rivals or predictions. <span class="pt-translation hidden-pt">(Para ter um desempenho melhor que os rivais ou previsões.)</span></td>
+                    </tr>
+                    <tr>
+                        <td>Accelerated <span class="pt-translation hidden-pt">(Acelerou)</span></td>
+                        <td>To happen or develop more quickly. <span class="pt-translation hidden-pt">(Para acontecer ou se desenvolver mais rapidamente.)</span></td>
+                    </tr>
+                    <tr>
+                        <td>Beat the street / Smashed estimates <span class="pt-translation hidden-pt">(Superou as expectativas de Wall Street / Superou as estimativas)</span></td>
+                        <td>To exceed analyst estimates for earnings by a wide margin. <span class="pt-translation hidden-pt">(Para exceder as estimativas dos analistas de lucros por uma margem ampla.)</span></td>
+                    </tr>
+                    <tr>
+                        <td>Robust growth / Strong top-line growth <span class="pt-translation hidden-pt">(Crescimento robusto / Forte crescimento da receita bruta)</span></td>
+                        <td>Healthy, vigorous, or sustained growth. <span class="pt-translation hidden-pt">(Crescimento saudável, vigoroso ou sustentado.)</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Vocabulary Challenge Card -->
+        <div class="content-card fade-in" id="quiz-card-en">
+            <h2 class="section-title">
+                <i class="fas fa-brain"></i>
+                Vocabulary Challenge
+            </h2>
+            <p class="quiz-card-header">Choose the word that best completes the sentence.</p>
+            <div id="quiz-container-en">
+                <p id="quiz-question-en" class="quiz-question">Loading question...</p>
+                <div id="quiz-options-en" class="quiz-options">
+                    <!-- Quiz buttons will be dynamically added here -->
+                </div>
+                <div id="quiz-feedback-en" class="quiz-feedback"></div>
+                <button id="next-question-button-en" class="quiz-next-button hidden">Next Question</button>
+            </div>
+        </div>
+        <div class="content-card fade-in hidden-pt" id="quiz-card-pt">
+            <h2 class="section-title">
+                <i class="fas fa-brain"></i>
+                Desafio do Vocabulário
+            </h2>
+            <p class="quiz-card-header">Escolha a palavra que melhor completa a frase.</p>
+            <div id="quiz-container-pt">
+                <p id="quiz-question-pt" class="quiz-question">Carregando pergunta...</p>
+                <div id="quiz-options-pt" class="quiz-options">
+                    <!-- Quiz buttons will be dynamically added here -->
+                </div>
+                <div id="quiz-feedback-pt" class="quiz-feedback"></div>
+                <button id="next-question-button-pt" class="quiz-next-button hidden">Próxima Pergunta</button>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // Ensure the entire document is loaded before running scripts
+        window.onload = function() {
+
+            // Language switcher logic
+            const langButtons = document.querySelectorAll('.lang-buttons button');
+            const ptTranslations = document.querySelectorAll('.pt-translation');
+            const quizCardEn = document.getElementById('quiz-card-en');
+            const quizCardPt = document.getElementById('quiz-card-pt');
+            const businessPrimerCard = document.getElementById('business-primer-card');
+
+            function switchLanguage(lang) {
+                if (lang === 'en') {
+                    ptTranslations.forEach(el => el.classList.add('hidden-pt'));
+                    quizCardEn.classList.remove('hidden-pt');
+                    quizCardPt.classList.add('hidden-pt');
+                    document.getElementById('lang-en').classList.add('active');
+                    document.getElementById('lang-pt').classList.remove('active');
+                    document.getElementById('pdf-export-button').textContent = 'Export to PDF';
+                } else {
+                    ptTranslations.forEach(el => el.classList.remove('hidden-pt'));
+                    quizCardEn.classList.add('hidden-pt');
+                    quizCardPt.classList.remove('hidden-pt');
+                    document.getElementById('lang-pt').classList.add('active');
+                    document.getElementById('lang-en').classList.remove('active');
+                    document.getElementById('pdf-export-button').textContent = 'Exportar para PDF';
+                }
+                renderCharts(lang);
+                showQuestion(lang);
+            }
+
+            langButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const lang = e.target.id.replace('lang-', '');
+                    switchLanguage(lang);
+                });
+            });
+
+            // Sample data showing an increasing trend
+            const chartData = {
+                labels: ['January', 'February', 'March', 'April', 'May', 'June'],
+                data: [15000, 18000, 22000, 25000, 29000, 33000]
+            };
+
+            // Chart descriptions for both languages
+            const chartDescriptions = {
+                en: {
+                    initial: `<p>Hover over the data points on the graph to see a Bloomberg-style trend analysis.</p>`,
+                    jan: `<strong>January:</strong> The year began with a solid revenue base of $15,000.`,
+                    feb: `<strong>February:</strong> Revenue started to <span class="highlight-gold">tick up</span>, signaling a positive shift in market sentiment.`,
+                    mar: `<strong>March:</strong> The company's revenue continued to <span class="highlight-gold">climb</span>, marking a period of sustained growth.`,
+                    apr: `<strong>April:</strong> The quarter ended with a sharp <span class="highlight-gold">surge</span>, driven by strong market performance.`,
+                    may: `<strong>May:</strong> Following a strategic win, revenue <span class="highlight-gold">exploded</span>, showing a dramatic upward trajectory.`,
+                    jun: `<strong>June:</strong> The uptrend momentum <span class="highlight-gold">marched on</span>, with revenue hitting new highs.`
+                },
+                pt: {
+                    initial: `<p>Passe o mouse sobre os pontos do gráfico para ver uma análise de tendência ao estilo Bloomberg.</p>`,
+                    jan: `<strong>Janeiro:</strong> O ano começou com uma base de receita sólida de $15.000.`,
+                    feb: `<strong>Fevereiro:</strong> A receita começou a <span class="highlight-gold">dar uma subidinha</span>, sinalizando uma mudança positiva no sentimento do mercado.`,
+                    mar: `<strong>Março:</strong> A receita da empresa continuou a <span class="highlight-gold">subir</span>, marcando um período de crescimento sustentado.`,
+                    apr: `<strong>Abril:</strong> O trimestre terminou com uma <span class="highlight-gold">disparada</span> acentuada, impulsionada por um forte desempenho de mercado.`,
+                    may: `<strong>Maio:</strong> Após uma vitória estratégica, a receita <span class="highlight-gold">explodiu</span>, mostrando uma trajetória ascendente dramática.`,
+                    jun: `<strong>Junho:</strong> O momentum de alta <span class="highlight-gold">continuou</span>, com a receita atingindo novos recordes.`
+                }
+            };
+            
+            // Function to render charts for a specific language
+            function renderCharts(lang) {
+                // Destroy existing chart to prevent stacking
+                if (window.myChart) window.myChart.destroy();
+                if (window.trendChart) window.trendChart.destroy();
+
+                const ctx = document.getElementById('financialChart').getContext('2d');
+                const descriptionBox = document.getElementById('chart-description-box');
+
+                const data = {
+                    labels: (lang === 'en') ? ['January', 'February', 'March', 'April', 'May', 'June'] : ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho'],
+                    datasets: [{
+                        label: (lang === 'en') ? 'Revenue ($)' : 'Receita ($)',
+                        data: chartData.data,
+                        backgroundColor: 'rgba(242, 169, 0, 0.4)',
+                        borderColor: 'var(--bk-gold)',
+                        borderWidth: 3,
+                        pointBackgroundColor: 'var(--bk-gold)',
+                        pointBorderColor: 'var(--netflix-dark)',
+                        pointHoverBackgroundColor: 'var(--bk-white)',
+                        pointHoverBorderColor: 'var(--bk-gold)',
+                        tension: 0.4,
+                        fill: true,
+                    }]
+                };
+
+                const options = {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            enabled: false,
+                            external: function(context) {
+                                let tooltipEl = document.getElementById('chartjs-tooltip');
+                                if (!tooltipEl) {
+                                    tooltipEl = document.createElement('div');
+                                    tooltipEl.id = 'chartjs-tooltip';
+                                    tooltipEl.innerHTML = '<table></table>';
+                                    document.body.appendChild(tooltipEl);
+                                }
+
+                                const tooltipModel = context.tooltip;
+                                if (tooltipModel.opacity === 0) {
+                                    descriptionBox.innerHTML = chartDescriptions[lang].initial;
+                                    return;
+                                }
+
+                                const index = tooltipModel.dataPoints[0].dataIndex;
+                                let description = '';
+                                if (index === 0) { description = chartDescriptions[lang].jan; }
+                                else if (index === 1) { description = chartDescriptions[lang].feb; }
+                                else if (index === 2) { description = chartDescriptions[lang].mar; }
+                                else if (index === 3) { description = chartDescriptions[lang].apr; }
+                                else if (index === 4) { description = chartDescriptions[lang].may; }
+                                else if (index === 5) { description = chartDescriptions[lang].jun; }
+
+                                descriptionBox.innerHTML = `<p>${description}</p>`;
+                            }
+                        },
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: 'var(--netflix-light-text)' }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: {
+                                color: 'var(--netflix-light-text)',
+                                callback: function(value) {
+                                    return new Intl.NumberFormat((lang === 'en') ? 'en-US' : 'pt-BR', {
+                                        style: 'currency',
+                                        currency: 'USD',
+                                        notation: 'compact'
+                                    }).format(value);
+                                }
+                            }
+                        }
+                    }
+                };
+                window.myChart = new Chart(ctx, { type: 'line', data: data, options: options });
+
+                // --- Trend Vocabulary Chart Logic ---
+                const trendCtx = document.getElementById('trendVocabularyChart').getContext('2d');
+                const trendData = {
+                    labels: ['', '', '', '', '', '', '', ''],
+                    datasets: [{
+                        label: (lang === 'en') ? 'Price' : 'Preço',
+                        data: [10, 11, 15, 22, 22, 22, 28, 35],
+                        borderColor: 'var(--bk-gold)',
+                        borderWidth: 3,
+                        pointRadius: 6,
+                        pointBackgroundColor: ['transparent', 'transparent', 'transparent', 'transparent', 'transparent', 'transparent', 'transparent', 'transparent'],
+                        pointBorderColor: ['transparent', 'transparent', 'transparent', 'transparent', 'transparent', 'transparent', 'transparent', 'transparent'],
+                        tension: 0.4,
+                        fill: false,
+                        pointHoverRadius: 6,
+                        pointHoverBackgroundColor: 'var(--bk-gold)',
+                    },
+                    {
+                        label: "Tick up",
+                        data: [{x:0, y:10}, {x:1, y:11}],
+                        borderColor: 'var(--bk-gold)',
+                        borderWidth: 3,
+                        fill: false,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
+                    },
+                    {
+                        label: "Climb",
+                        data: [{x:1, y:11}, {x:2, y:15}],
+                        borderColor: 'var(--bk-gold)',
+                        borderWidth: 3,
+                        fill: false,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
+                    },
+                    {
+                        label: "Surge",
+                        data: [{x:2, y:15}, {x:3, y:22}],
+                        borderColor: 'var(--bk-gold)',
+                        borderWidth: 3,
+                        fill: false,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
+                    },
+                    {
+                        label: "Consolidate",
+                        data: [{x:3, y:22}, {x:4, y:22}, {x:5, y:22}],
+                        borderColor: 'var(--bk-gold)',
+                        borderWidth: 3,
+                        fill: false,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
+                    },
+                    {
+                        label: "Rebound",
+                        data: [{x:5, y:22}, {x:6, y:28}],
+                        borderColor: 'var(--bk-gold)',
+                        borderWidth: 3,
+                        fill: false,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
+                    },
+                    {
+                        label: "Advance / Rally",
+                        data: [{x:6, y:28}, {x:7, y:35}],
+                        borderColor: 'var(--bk-gold)',
+                        borderWidth: 3,
+                        fill: false,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
+                    }]
+                };
+
+                const trendOptions = {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { display: false }, ticks: { display: false } },
+                        y: {
+                            beginAtZero: false,
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: {
+                                color: 'var(--netflix-light-text)',
+                                callback: function(value) {
+                                    return new Intl.NumberFormat((lang === 'en') ? 'en-US' : 'pt-BR', {
+                                        style: 'currency',
+                                        currency: 'USD',
+                                        notation: 'compact'
+                                    }).format(value);
+                                }
+                            }
+                        }
+                    },
+                    plugins: { legend: { display: false }, tooltip: { enabled: false } }
+                };
+                window.trendChart = new Chart(trendCtx, { type: 'line', data: trendData, options: trendOptions });
+            }
+
+            // PDF Export Functionality
+            const pdfButton = document.getElementById('pdf-export-button');
+            if (pdfButton) {
+                pdfButton.addEventListener('click', () => {
+                    const content = document.body;
+                    const options = {
+                        margin: 10,
+                        filename: 'financial-report.pdf',
+                        image: { type: 'jpeg', quality: 0.98 },
+                        html2canvas: { scale: 2 },
+                        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                    };
+                    html2pdf().from(content).set(options).save();
+                });
+            }
+
+            // Animation for content cards
+            const cards = document.querySelectorAll('.content-card');
+            cards.forEach((card, index) => {
+                setTimeout(() => {
+                    card.classList.add('fade-in');
+                }, index * 200);
+            });
+
+            // --- Vocabulary Quiz Logic ---
+            const quizQuestions = {
+                en: [
+                    {
+                        question: "A price level that a stock has difficulty falling below is known as...",
+                        options: ["Resistance", "Support", "Moving Average", "Correction"],
+                        answer: "Support"
+                    },
+                    {
+                        question: "When a stock's price moves above a resistance level, it is called a...",
+                        options: ["Breakout", "Breakdown", "Uptick", "Consolidation"],
+                        answer: "Breakout"
+                    },
+                    {
+                        question: "The degree of variation in a trading price over time is known as...",
+                        options: ["Liquidity", "Volatility", "Momentum", "Arbitrage"],
+                        answer: "Volatility"
+                    },
+                    {
+                        question: "A monetary policy focused on stimulating economic growth by lowering interest rates is described as...",
+                        options: ["Hawkish", "Bearish", "Dovish", "Bullish"],
+                        answer: "Dovish"
+                    },
+                    {
+                        question: "The stock experienced extreme ______ following the unexpected news.",
+                        options: ["liquidity", "bullishness", "volatility", "dovishness"],
+                        answer: "volatility"
+                    },
+                    {
+                        question: "A decline of at least 10% in a stock price from its peak is a...",
+                        options: ["bear market", "market correction", "crash", "reversal"],
+                        answer: "market correction"
+                    },
+                    {
+                        question: "The central bank adopted a ______ stance, suggesting rate cuts are on the horizon.",
+                        options: ["hawkish", "bullish", "dovish", "bearish"],
+                        answer: "dovish"
+                    },
+                    {
+                        question: "The S&P 500 continued to ______ after the positive economic data.",
+                        options: ["rebound", "rise", "boom", "escalate"],
+                        answer: "rebound"
+                    },
+                    {
+                        question: "The company plans to ______ its production capacity to meet growing demand.",
+                        options: ["scale up", "expand", "generate", "boost"],
+                        answer: "scale up"
+                    },
+                    {
+                        question: "The housing market is ______ in several cities.",
+                        options: ["escalating", "rising", "booming", "accelerating"],
+                        answer: "booming"
+                    },
+                    {
+                        question: "The currency ______ against the dollar after the political stability.",
+                        options: ["bounced back", "appreciated", "skyrocketed", "strengthened"],
+                        answer: "appreciated"
+                    },
+                    {
+                        question: "The stock hit an ______ after reporting a strong quarter.",
+                        options: ["upswing", "uptick", "all-time high", "rebound"],
+                        answer: "all-time high"
+                    },
+                    {
+                        question: "The new company strategy ______ record profits. A gente vê!",
+                        options: ["generated", "expanded", "boosted", "outperformed"],
+                        answer: "generated"
+                    },
+                    {
+                        question: "The company's earnings not only met but ______ analysts' estimates.",
+                        options: ["met", "beat", "smashed", "exceeded"],
+                        answer: "smashed"
+                    },
+                    {
+                        question: "The CEO provided an ______ for the coming year, boosting investor confidence.",
+                        options: ["upbeat outlook", "robust growth", "strong quarter", "earnings surprise"],
+                        answer: "upbeat outlook"
+                    },
+                    {
+                        question: "The new product launch resulted in ______ revenue.",
+                        options: ["downbeat outlook", "top-line growth", "stagnation", "declined"],
+                        answer: "top-line growth"
+                    },
+                    {
+                        question: "A term describing an investor's belief that a stock or the market will rise in value is called...",
+                        options: ["Bullish", "Bearish", "Bubble", "Consolidation"],
+                        answer: "Bullish"
+                    },
+                    {
+                        question: "The central bank adopted a ______ stance, raising interest rates to combat inflation.",
+                        options: ["Hawkish", "Dovish", "Bullish", "Neutral"],
+                        answer: "Hawkish"
+                    },
+                    {
+                        question: "The interest that has been accumulated on a loan but not yet paid is called...",
+                        options: ["Accrued Interest", "Bank Fees", "Increment", "Addition"],
+                        answer: "Accrued Interest"
+                    }
+                ],
+                pt: [
+                    {
+                        question: "Um nível de preço que uma ação tem dificuldade em cair abaixo é conhecido como...",
+                        options: ["Resistência", "Suporte", "Média Móvel", "Correção"],
+                        answer: "Suporte"
+                    },
+                    {
+                        question: "Quando o preço de uma ação ultrapassa um nível de resistência, isso é chamado de...",
+                        options: ["Rompimento", "Quebra", "Pequena alta", "Consolidação"],
+                        answer: "Rompimento"
+                    },
+                    {
+                        question: "O grau de variação no preço de negociação ao longo do tempo é conhecido como...",
+                        options: ["Liquidez", "Volatilidade", "Momento", "Arbitragem"],
+                        answer: "Volatilidade"
+                    },
+                    {
+                        question: "Uma política monetária focada em estimular o crescimento econômico pela redução das taxas de juros é descrita como...",
+                        options: ["Linha-dura", "Pessimista", "Conciliador", "Otimista"],
+                        answer: "Conciliador"
+                    },
+                    {
+                        question: "O mercado experimentou uma extrema ______ após as notícias inesperadas.",
+                        options: ["liquidez", "otimismo", "volatilidade", "conciliação"],
+                        answer: "volatilidade"
+                    },
+                    {
+                        question: "Um declínio de pelo menos 10% no preço de uma ação a partir de seu pico é uma...",
+                        options: ["mercado de baixa", "correção de mercado", "colapso", "reversão"],
+                        answer: "correção de mercado"
+                    },
+                    {
+                        question: "O banco central adotou uma postura ______, sugerindo que cortes nas taxas estão no horizonte.",
+                        options: ["linha-dura", "otimista", "conciliador", "pessimista"],
+                        answer: "conciliador"
+                    },
+                    {
+                        question: "O S&P 500 continuou a ______ após os dados econômicos positivos.",
+                        options: ["recuperar", "subir", "bombar", "escalar"],
+                        answer: "recuperar"
+                    },
+                    {
+                        question: "A empresa planeja ______ sua capacidade de produção para atender à demanda crescente.",
+                        options: ["escalar", "expandir", "gerar", "turbinar"],
+                        answer: "escalar"
+                    },
+                    {
+                        question: "O mercado imobiliário está ______ em várias cidades.",
+                        options: ["escalando", "subindo", "bombando", "acelerando"],
+                        answer: "bombando"
+                    },
+                    {
+                        question: "A moeda ______ frente ao dólar após a estabilidade política.",
+                        options: ["repicar", "valorizou", "subiu vertiginosamente", "fortaleceu"],
+                        answer: "valorizou"
+                    },
+                    {
+                        question: "A ação atingiu uma ______ depois de registrar um trimestre forte.",
+                        options: ["virada", "alta", "máxima histórica", "repique"],
+                        answer: "máxima histórica"
+                    },
+                    {
+                        question: "A nova estratégia da empresa ______ lucros recordes. A gente vê!",
+                        options: ["gerou", "expandiu", "turbinou", "superou"],
+                        answer: "gerou"
+                    },
+                    {
+                        question: "Os lucros da empresa não apenas atingiram, mas ______ as estimativas dos analistas.",
+                        options: ["atingiram", "bateram", "superaram com folga", "excederam"],
+                        answer: "superaram com folga"
+                    },
+                    {
+                        question: "O CEO deu uma ______ para o próximo ano, aumentando a confiança dos investidores.",
+                        options: ["perspectiva otimista", "crescimento robusto", "trimestre forte", "surpresa nos lucros"],
+                        answer: "perspectiva otimista"
+                    },
+                    {
+                        question: "O lançamento do novo produto resultou em um ______.",
+                        options: ["perspectiva pessimista", "crescimento da receita bruta", "estagnação", "diminuiu"],
+                        answer: "crescimento da receita bruta"
+                    },
+                    {
+                        question: "Um termo que descreve a crença de um investidor de que uma ação ou o mercado irá subir de valor é chamado de...",
+                        options: ["Otimista", "Pessimista", "Bolha", "Consolidação"],
+                        answer: "Otimista"
+                    },
+                    {
+                        question: "O banco central adotou uma postura ______, elevando as taxas de juros para combater a inflação.",
+                        options: ["Linha-dura", "Pacifista", "Otimista", "Neutro"],
+                        answer: "Linha-dura"
+                    },
+                    {
+                        question: "Os juros que foram acumulados em um empréstimo mas ainda não foram pagos são chamados de...",
+                        options: ["Juros Acumulados", "Taxas bancárias", "Incremento", "Adição"],
+                        answer: "Juros Acumulados"
+                    }
+                ]
+            };
+
+            let currentQuestionIndex = 0;
+            let quizStarted = false;
+            let currentLanguage = 'en';
+            
+            function showQuestion(lang) {
+                const quizContainerId = `quiz-container-${lang}`;
+                const questionElementId = `quiz-question-${lang}`;
+                const optionsElementId = `quiz-options-${lang}`;
+                const feedbackElementId = `quiz-feedback-${lang}`;
+                const nextButtonId = `next-question-button-${lang}`;
+
+                const quizContainer = document.getElementById(quizContainerId);
+                const questionElement = document.getElementById(questionElementId);
+                const optionsElement = document.getElementById(optionsElementId);
+                const feedbackElement = document.getElementById(feedbackElementId);
+                const nextButton = document.getElementById(nextButtonId);
+
+                if (!quizContainer) return;
+
+                if (!quizStarted || currentLanguage !== lang) {
+                    quizStarted = true;
+                    currentLanguage = lang;
+                    // Shuffle the questions once per language
+                    shuffleArray(quizQuestions[lang]);
+                    currentQuestionIndex = 0;
+                }
+                
+                const currentQuestion = quizQuestions[lang][currentQuestionIndex];
+                questionElement.innerHTML = currentQuestion.question;
+                optionsElement.innerHTML = '';
+                feedbackElement.textContent = '';
+                nextButton.classList.add('hidden');
+                
+                const shuffledOptions = shuffleArray([...currentQuestion.options]);
+                shuffledOptions.forEach(option => {
+                    const button = document.createElement('button');
+                    button.textContent = option;
+                    button.classList.add('quiz-button');
+                    button.addEventListener('click', () => checkAnswer(button, option, currentQuestion.answer, lang));
+                    optionsElement.appendChild(button);
+                });
+            }
+
+            function checkAnswer(selectedButton, selectedAnswer, correctAnswer, lang) {
+                const optionsElement = document.getElementById(`quiz-options-${lang}`);
+                const feedbackElement = document.getElementById(`quiz-feedback-${lang}`);
+                const nextButton = document.getElementById(`next-question-button-${lang}`);
+
+                const buttons = optionsElement.querySelectorAll('.quiz-button');
+                buttons.forEach(button => {
+                    button.disabled = true;
+                    if (button.textContent === correctAnswer) {
+                        button.classList.add('correct');
+                    } else {
+                        button.classList.add('incorrect');
+                    }
+                });
+
+                if (selectedAnswer === correctAnswer) {
+                    feedbackElement.textContent = (lang === 'en') ? "Correct! Great choice." : "Correto! Ótima escolha.";
+                    feedbackElement.style.color = 'var(--feedback-correct)';
+                } else {
+                    const feedbackText = (lang === 'en') ? `Incorrect. The correct answer is "${correctAnswer}".` : `Incorreto. A resposta certa é "${correctAnswer}".`;
+                    feedbackElement.textContent = feedbackText;
+                    feedbackElement.style.color = 'var(--feedback-incorrect)';
+                }
+                nextButton.classList.remove('hidden');
+            }
+
+            function nextQuestion(lang) {
+                currentQuestionIndex++;
+                if (currentQuestionIndex < quizQuestions[lang].length) {
+                    showQuestion(lang);
+                } else {
+                    const questionElement = document.getElementById(`quiz-question-${lang}`);
+                    const optionsElement = document.getElementById(`quiz-options-${lang}`);
+                    const feedbackElement = document.getElementById(`quiz-feedback-${lang}`);
+                    const nextButton = document.getElementById(`next-question-button-${lang}`);
+                    
+                    questionElement.textContent = (lang === 'en') ? "Challenge complete! You have gone through all the questions." : "Desafio completo! Você passou por todas as perguntas.";
+                    optionsElement.innerHTML = '';
+                    feedbackElement.textContent = '';
+                    nextButton.classList.add('hidden');
+                    currentQuestionIndex = 0;
+                    quizStarted = false;
+                }
+            }
+
+            // Utility function to shuffle an array
+            function shuffleArray(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+                return array;
+            }
+
+            document.getElementById('next-question-button-en').addEventListener('click', () => nextQuestion('en'));
+            document.getElementById('next-question-button-pt').addEventListener('click', () => nextQuestion('pt'));
+
+            // Initial calls
+            switchLanguage('en');
+        };
+    </script>
+</body>
+</html>
